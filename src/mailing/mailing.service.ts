@@ -1,0 +1,67 @@
+import { Injectable, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Mailing } from './entities/mailing.entity';
+import { ItemMailing } from './entities/item-mailing.entity';
+import { CreateMailingDto } from './dto/create-mailing.dto';
+
+@Injectable()
+export class MailingService {
+  constructor(
+    @InjectRepository(Mailing)
+    private readonly mailingRepository: Repository<Mailing>,
+    @InjectRepository(ItemMailing)
+    private readonly itemMailingRepository: Repository<ItemMailing>,
+  ) {}
+
+  async create(createMailingDto: CreateMailingDto): Promise<Mailing> {
+    // Verificar si el email ya existe
+    const existingMailing = await this.mailingRepository.findOne({
+      where: { email: createMailingDto.email },
+    });
+
+    if (existingMailing) {
+      throw new ConflictException(`El email ${createMailingDto.email} ya está registrado`);
+    }
+
+    // Crear el mailing
+    const mailing = this.mailingRepository.create({
+      email: createMailingDto.email,
+      is_lock: createMailingDto.is_lock ?? false,
+      user_id: createMailingDto.user_id,
+    });
+
+    const savedMailing = await this.mailingRepository.save(mailing);
+
+    // Crear los items si existen
+    if (createMailingDto.items && createMailingDto.items.length > 0) {
+      const items = createMailingDto.items.map((item) =>
+        this.itemMailingRepository.create({
+          mailing_id: savedMailing.id,
+          is_active: item.is_active ?? true,
+          mailing_type: item.mailing_type,
+        }),
+      );
+      await this.itemMailingRepository.save(items);
+    }
+
+    // Retornar el mailing con sus items
+    const result = await this.mailingRepository.findOne({
+      where: { id: savedMailing.id },
+      relations: ['items'],
+    });
+    
+    return result!;
+  }
+
+  async findAll(): Promise<Mailing[]> {
+    return this.mailingRepository.find({ relations: ['items'] });
+  }
+
+  async findByEmail(email: string): Promise<Mailing | null> {
+    return this.mailingRepository.findOne({
+      where: { email },
+      relations: ['items'],
+    });
+  }
+}
