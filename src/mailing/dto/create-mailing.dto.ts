@@ -7,6 +7,7 @@ import {
   ValidateNested,
   IsEnum,
   MaxLength,
+  ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MailingType } from '../entities/item-mailing.entity';
@@ -39,4 +40,11 @@ export class CreateMailingDto {
   @ValidateNested({ each: true })
   @Type(() => CreateItemMailingDto)
   items?: CreateItemMailingDto[];
+}
+
+export class BulkCreateMailingDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEmail({}, { each: true })
+  emails: string[];
 }

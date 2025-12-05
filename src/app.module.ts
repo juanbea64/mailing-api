@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailingModule } from './mailing/mailing.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 import { Mailing } from './mailing/entities/mailing.entity';
 import { ItemMailing } from './mailing/entities/item-mailing.entity';
 
@@ -18,6 +19,7 @@ import { ItemMailing } from './mailing/entities/item-mailing.entity';
       synchronize: false, // En producción usar migraciones
     }),
     MailingModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

@@ -3,7 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Mailing } from './entities/mailing.entity';
 import { ItemMailing } from './entities/item-mailing.entity';
-import { CreateMailingDto } from './dto/create-mailing.dto';
+import { CreateMailingDto, BulkCreateMailingDto } from './dto/create-mailing.dto';
+
+interface BulkCreateResult {
+  created: number;
+  skipped: number;
+  errors: string[];
+}
 
 @Injectable()
 export class MailingService {
@@ -52,6 +58,40 @@ export class MailingService {
     });
     
     return result!;
+  }
+
+  async bulkCreate(bulkDto: BulkCreateMailingDto): Promise<BulkCreateResult> {
+    const result: BulkCreateResult = {
+      created: 0,
+      skipped: 0,
+      errors: [],
+    };
+
+    for (const email of bulkDto.emails) {
+      try {
+        const existing = await this.mailingRepository.findOne({
+          where: { email: email.toLowerCase() },
+        });
+
+        if (existing) {
+          result.skipped++;
+          result.errors.push(`${email} ya existe`);
+          continue;
+        }
+
+        const mailing = this.mailingRepository.create({
+          email: email.toLowerCase(),
+          is_lock: false,
+        });
+
+        await this.mailingRepository.save(mailing);
+        result.created++;
+      } catch (error) {
+        result.errors.push(`Error con ${email}: ${error.message}`);
+      }
+    }
+
+    return result;
   }
 
   async findAll(): Promise<Mailing[]> {
